@@ -1,4 +1,6 @@
-require 'facade/base'
+require 'rubygems'
+require 'activerecord'
+require 'filter_foo'
 
 module Facade
 	def self.included(base_class)
@@ -6,5 +8,27 @@ module Facade
 			extend Base
 		end
 	end
+	
+	class << self
+       	def options
+    		@options ||= {
+    			:valid_find_options => [
+        			:conditions, :include, :joins, :limit, :offset,
+                    :order, :select, :readonly, :group, :having, :from, :lock
+    			],
+    			:default_list_options => {
+    				:conditions => nil,
+    				:include => nil,
+    				:start => 1,
+    				:limit => 40,
+    				:order => nil
+    			}
+    		}
+    	end
+    end
+    
 
 end
+
+
+require 'facade/base'
