@@ -4,17 +4,31 @@ module Facade
     
     module Base
         
-        def list(name, options)
-            options = sanitize_options(options)
+        def list(name, options = {})
+            sanitize_options(options)
             
-            options = merge_default_options(options)
+            options = merge_default_options(name, options)
             
-            with_scope(:find => {:conditions => params[:conditions], :include => params[:include]}) do
-    			if params[:limit] == nil
-    				records, record_count = list_all(params)
-    			else
-    				records, record_count = list_paginated(params)
-    			end					
+            records = nil
+            record_count = nil
+
+            with_scope(:find => 
+                {
+                    :conditions => options[:conditions], 
+                    :include => options[:include], 
+                    :joins => options[:join],
+                    :order => options[:order],
+                    :group => options[:group],
+                    :select => options[:select],
+                    :from => options[:from],
+                    :readonly => options[:readonly]
+                }) do
+                    records = find(:all, :limit => options[:limit], :offset => options[:offset])
+                    if options[:skip_count]
+                        record_count = records.size
+                    else
+    			        record_count = count
+			        end
     		end
 		
     		return records, record_count
@@ -22,23 +36,23 @@ module Facade
         
         def sanitize_options(options)
             options.keys.each do |key|
-               unless Facade.options[:valid_find_options].include?(key) 
+               unless Facade.options[:valid_find_options].include?(key) || Facade.options[:valid_list_options].include?(key)
                    raise InvalidListOptions, "Bad key passed: #{key}"
                end
             end
         end
 
-        def merge_default_options(options)
-            {
-				:conditions => params[:search] ? get_search_conditions(params[:search]) : nil,
-				:include => params[:include] || get_sext_constant('SEXT_INCLUDE'),
-				:start => params[:start],
-				:limit => params[:list_all] ? nil : params[:limit],
-				:order => sext_get_order(params[:sort], params[:dir])
-			}.merge(options)
+        def merge_default_options(name, options = {})
+                #             {
+                # :conditions => params[:search] ? get_search_conditions(params[:search]) : nil,
+                # :include => params[:include] || get_sext_constant('SEXT_INCLUDE'),
+                # :start => params[:start],
+                # :limit => params[:list_all] ? nil : params[:limit],
+                # :order => sext_get_order(params[:sort], params[:dir])
+            list_options[name].merge(options)
 		end
 
-        def list_options_for(name, options = {})
+        def list_default_options(name, options = {})
             write_inheritable_attribute(:list_options, {}) if list_options.nil?
             list_options[name] = Facade.options[:default_list_options].merge(options)
         end
@@ -46,27 +60,16 @@ module Facade
         def list_conditions
             @list_conditions ||= FilterFoo.new
         end
-
-    	def facade_list(format, params)
-		
-    	end
-	
-    	def facade_list_defaults(&block)
-    		@defaults = yield
-      		@list_defaults ||= {
-      			:sort => nil,
-      			:dir => nil,
-      			:per_page => 40
-      		}
-      		@list_defaults
-    	end
-	
-    	def facade_list_defaults
-	
-	
-    	end
     	
     	private
+    	
+    	# Grabs all records and a count in the context of :conditions and :include
+		def list_all(options = {})
+			records = find(:all, :limit => options[:limit], :offset => options[:offset], :order => options[:order])
+			record_count = count(options)
+			
+			return records, record_count
+		end
     	
     	# Determines the :order value that gets passed to #find.
 		def get_list_order(sort, dir)
@@ -92,7 +95,7 @@ module Facade
 		end
 		
 		def list_options
-		    read_inheritable_attribute(:list_options)		    
+		    read_inheritable_attribute(:list_options)
 	    end
 
     end

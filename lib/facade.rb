@@ -16,6 +16,9 @@ module Facade
         			:conditions, :include, :joins, :limit, :offset,
                     :order, :select, :readonly, :group, :having, :from, :lock
     			],
+    			:valid_list_options => [
+                    :skip_count
+    			],
     			:default_list_options => {
     				:conditions => nil,
     				:include => nil,
