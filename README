@@ -1,13 +1,54 @@
-Guise
+Facade
 =====
 
-Introduction goes here.
+Provides a streamlined interface for searching, paginating 
+and finding. Combines ActiveRecord's standard #find method with
+WillPaginate and ThinkingSphinx's searching.
 
+Made so you can set defaults for #find conditions and only have to 
+make one call in your controller.
 
 Example
 =======
 
-Example goes here.
+class User < ActiveRecord::Base
+	include Facade
+
+	list_default_options :extjs, {
+	    :list => {
+	        :skip_count => false,
+			:order => 'users.name ASC'
+	    },
+	    :pagination => {
+	        :per_page => 40,
+	        :page => 1
+	    }
+	}
+
+	def list_for_extjs(params)
+		if params[:list_all]
+			self.list(:extjs)
+		else
+			self.list(:extjs, {
+				:paginate => {
+					:page => params[:page]
+				},
+				:sort => params[:sort],
+				:dir => params[:dir]
+			})
+		end
+	end
+end
+
+class UsersController < ActionController::Base
+
+	def index
+		@users, @count = User.list_for_extjs(params)
+		@users = @users.map {|u| {:id => u.id, :name => u.name} }
+		
+		render :json => {:success => true, :records => @users, :count => @count}
+	end
+end
 
 
-Copyright (c) 2009 [name of plugin creator], released under the MIT license
+Copyright (c) 2009-2010 Adam Grant, released under the MIT license

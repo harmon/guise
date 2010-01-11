@@ -1,4 +1,5 @@
 require 'facade'
+
 build_model :user do
     string :name
     string :email
@@ -8,11 +9,12 @@ build_model :user do
     include Facade
     
     list_default_options :default, {
-        :skip_count => true
+        :list => {
+            :skip_count => true
+        },
+        :pagination => {
+            :per_page => 40,
+            :page => 1
+        }
     }
-  
-#    User.list(:limit => 5, :paginate => {:page => , :per_page => }, :search => 'term')
-    
-    
-  
 end

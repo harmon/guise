@@ -25,6 +25,7 @@ describe Facade do
     
     describe "When finding records" do
         before(:each) do
+            User.delete_all
             Factory.create :user, :name => 'John Jackson'
             Factory.create :user, :name => 'Ted Jackson'
             Factory.create :user, :name => 'Mikey Jackson'
@@ -32,6 +33,13 @@ describe Facade do
         
         it "should find three users" do
             @users, @count = User.list(:default)
+            @users.size.should == 3
+            @count.should == 3
+        end
+        
+        it "should paginate the users" do
+            @users, @count = User.list(:default, :paginate => {:per_page => 3})
+            puts @users.class.inspect
             @users.size.should == 3
             @count.should == 3
         end

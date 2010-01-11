@@ -1,18 +1,18 @@
-
 module Facade
     class InvalidListOptions < StandardError; end
     
     module Base
         
+        # Main method.
         def list(name, options = {})
             sanitize_options(options)
             
-            options = merge_default_options(name, options)
+            options = merge_default_options(name, :list, options)
             
             records = nil
             record_count = nil
 
-            with_scope(:find => 
+            with_scope(:find =>
                 {
                     :conditions => options[:conditions], 
                     :include => options[:include], 
@@ -23,17 +23,51 @@ module Facade
                     :from => options[:from],
                     :readonly => options[:readonly]
                 }) do
-                    records = find(:all, :limit => options[:limit], :offset => options[:offset])
-                    if options[:skip_count]
-                        record_count = records.size
-                    else
-    			        record_count = count
-			        end
+                if options[:paginate]
+                    records, record_count = list_paginated(name, options)
+                else
+                    records, record_count = list_all(name, options)
+                end
     		end
 		
     		return records, record_count
     	end
         
+        # Sets the default options for the scope specified by `name`
+        def list_default_options(name, options = {})
+            write_inheritable_attribute(:list_options, {}) if list_options.nil?
+            list_options[name] = Facade.options[:default_options].merge(options)
+        end
+
+        # Used to build up #find conditions
+        def list_conditions
+            @list_conditions ||= FilterFoo.new
+        end
+    	
+    	private
+
+        # Calls the normal AR Find.
+        def list_all(name, options)
+            records = find(:all, :limit => options[:limit], :offset => options[:offset])
+            if options[:skip_count]
+                record_count = records.size
+            else
+		        record_count = count
+	        end
+	        return records, record_count
+        end
+        
+        # Calls WillPaginate
+        def list_paginated(name, options)
+			options = options.slice(:page, :per_page, :order)
+			options = merge_default_options(name, :pagination, options)
+			result = paginate(:all, options)
+			record_count = result.total_entries
+			
+			return result, record_count
+		end
+		
+		# Throws InvalidListOptions if options were passed that shouldn't have been.
         def sanitize_options(options)
             options.keys.each do |key|
                unless Facade.options[:valid_find_options].include?(key) || Facade.options[:valid_list_options].include?(key)
@@ -42,35 +76,11 @@ module Facade
             end
         end
 
-        def merge_default_options(name, options = {})
-                #             {
-                # :conditions => params[:search] ? get_search_conditions(params[:search]) : nil,
-                # :include => params[:include] || get_sext_constant('SEXT_INCLUDE'),
-                # :start => params[:start],
-                # :limit => params[:list_all] ? nil : params[:limit],
-                # :order => sext_get_order(params[:sort], params[:dir])
-            list_options[name].merge(options)
+        # Merge options for a specified name and type into the defaults and return the result.
+        def merge_default_options(name, type, options = {})
+            list_options[name][type].merge(options)
 		end
 
-        def list_default_options(name, options = {})
-            write_inheritable_attribute(:list_options, {}) if list_options.nil?
-            list_options[name] = Facade.options[:default_list_options].merge(options)
-        end
-
-        def list_conditions
-            @list_conditions ||= FilterFoo.new
-        end
-    	
-    	private
-    	
-    	# Grabs all records and a count in the context of :conditions and :include
-		def list_all(options = {})
-			records = find(:all, :limit => options[:limit], :offset => options[:offset], :order => options[:order])
-			record_count = count(options)
-			
-			return records, record_count
-		end
-    	
     	# Determines the :order value that gets passed to #find.
 		def get_list_order(sort, dir)
 			if sort
@@ -94,6 +104,7 @@ module Facade
 			return order	
 		end
 		
+		# Returns the default options
 		def list_options
 		    read_inheritable_attribute(:list_options)
 	    end

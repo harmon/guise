@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'activerecord'
 require 'filter_foo'
+require 'will_paginate'
 
 module Facade
 	def self.included(base_class)
@@ -17,20 +18,24 @@ module Facade
                     :order, :select, :readonly, :group, :having, :from, :lock
     			],
     			:valid_list_options => [
-                    :skip_count
+                    :skip_count, :paginate
     			],
-    			:default_list_options => {
-    				:conditions => nil,
-    				:include => nil,
-    				:start => 1,
-    				:limit => 40,
-    				:order => nil
+    			:default_options => {
+    			    :list => {
+        				:conditions => nil,
+        				:include => nil,
+        				:start => 1,
+        				:limit => 40,
+        				:order => nil
+        			},
+        			:pagination => {
+        			    :per_page => 40,
+        			    :page => 1
+        			}
     			}
     		}
     	end
     end
-    
-
 end
 
 
